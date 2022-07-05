@@ -3,11 +3,14 @@
   "tasks": [
     {
       "type": "npm",
-      "script": "build",
-      "group": "build",
+      "script": "bundle",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
       "problemMatcher": [],
-      "label": "npm: build",
-      "detail": "rojo build default.project.json --output \"script.rbxm\""
+      "label": "bundle",
+      "detail": "bundle script"
     }
   ]
 }
