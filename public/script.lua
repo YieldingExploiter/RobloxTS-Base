@@ -179,7 +179,6 @@ newInstance("roblox-ts-model", "Folder", "roblox-ts-model", nil)
 newModule("main", "LocalScript", "roblox-ts-model.main", "roblox-ts-model", function () return setfenv(function() -- Compiled with roblox-ts v1.3.3
 local TS = require(script.Parent.include.RuntimeLib)
 local Roact = TS.import(script, TS.getModule(script, "@rbxts", "roact").src)
-print("hi")
 -- The below would usually be handled by a UI Library written natively in ts
 -- Fetch the most appopriate ui parent
 local LocalPlayer = game:GetService("Players").LocalPlayer
@@ -191,14 +190,24 @@ if not PlayerGui then
 	PlayerGui = LocalPlayer:FindFirstChildOfClass("PlayerGui")
 end
 -- Create an example UI
-local tree = Roact.createElement("ScreenGui", {
+local _attributes = {
 	IgnoreGuiInset = true,
-}, {
-	Label = Roact.createElement("TextLabel", {
-		Text = "It works!",
-		Size = UDim2.new(1, 0, 1, 0),
-	}),
-})
+}
+local _children = {}
+local _length = #_children
+local _attributes_1 = {
+	Text = "It works!",
+	Size = UDim2.new(1, 0, 1, 0),
+}
+for _k, _v in pairs({
+	MouseButton1Click = function()
+		return print("gay")
+	end,
+}) do
+	_attributes_1[Roact.Event[_k]] = _v
+end
+_children.Label = Roact.createElement("TextButton", _attributes_1)
+local tree = Roact.createElement("ScreenGui", _attributes, _children)
 -- Mount it
 Roact.mount(tree, PlayerGui, tostring(math.random()))
  end, newEnv("roblox-ts-model.main"))() end)
@@ -8349,6 +8358,373 @@ end
 
 return strict
  end, newEnv("roblox-ts-model.include.node_modules.roact.src.strict"))() end)
+
+newInstance("roact-hooks", "Folder", "roblox-ts-model.include.node_modules.roact-hooks", "roblox-ts-model.include.node_modules")
+
+newModule("src", "ModuleScript", "roblox-ts-model.include.node_modules.roact-hooks.src", "roblox-ts-model.include.node_modules.roact-hooks", function () return setfenv(function() local createUseBinding = require(script.createUseBinding)
+local createUseCallback = require(script.createUseCallback)
+local createUseContext = require(script.createUseContext)
+local createUseEffect = require(script.createUseEffect)
+local createUseMemo = require(script.createUseMemo)
+local createUseReducer = require(script.createUseReducer)
+local createUseState = require(script.createUseState)
+local createUseValue = require(script.createUseValue)
+local dependenciesDifferent = require(script.dependenciesDifferent)
+
+local Hooks = {}
+
+local function createHooks(roact, component)
+	local useEffect = createUseEffect(component)
+	local useState = createUseState(component)
+	local useValue = createUseValue(component)
+
+	local useBinding = createUseBinding(roact, useValue)
+	local useContext = createUseContext(component, useEffect, useState)
+	local useMemo = createUseMemo(useValue)
+
+	local useCallback = createUseCallback(useMemo)
+
+	local useReducer = createUseReducer(useCallback, useState)
+
+	return {
+		Roact = roact,
+		useBinding = useBinding,
+		useCallback = useCallback,
+		useContext = useContext,
+		useEffect = useEffect,
+		useMemo = useMemo,
+		useReducer = useReducer,
+		useState = useState,
+		useValue = useValue,
+	}
+end
+
+function Hooks.new(roact)
+	return function(render, options)
+		assert(typeof(render) == "function", "Hooked components must be functions.")
+
+		if options == nil then
+			options = {}
+		end
+
+		local componentType = options.componentType
+		local name = options.name or debug.info(render, "n")
+
+		local classComponent
+
+		if componentType == nil or componentType == "Component" then
+			classComponent = roact.Component:extend(name)
+		elseif componentType == "PureComponent" then
+			classComponent = roact.PureComponent:extend(name)
+		else
+			error(
+				string.format(
+					"'%s' is not a valid componentType. componentType must either be nil, 'Component', or 'PureComponent'",
+					tostring(componentType)
+				)
+			)
+		end
+
+		classComponent.defaultProps = options.defaultProps
+		classComponent.validateProps = options.validateProps
+
+		function classComponent:init()
+			self.defaultStateValues = {}
+			self.effectDependencies = {}
+			self.effects = {}
+			self.unmountEffects = {}
+
+			self.hooks = createHooks(roact, self)
+		end
+
+		function classComponent:runEffects()
+			for index = 1, self.hookCounter do
+				local effectData = self.effects[index]
+				if effectData == nil then
+					continue
+				end
+
+				local effect, dependsOn = unpack(effectData)
+
+				if dependsOn ~= nil then
+					local lastDependencies = self.effectDependencies[index]
+					if lastDependencies ~= nil and not dependenciesDifferent(dependsOn, lastDependencies) then
+						continue
+					end
+
+					self.effectDependencies[index] = dependsOn
+				end
+
+				local unmountEffect = self.unmountEffects[index]
+				if unmountEffect ~= nil then
+					unmountEffect()
+				end
+
+				self.unmountEffects[index] = effect()
+			end
+		end
+
+		function classComponent:didMount()
+			self:runEffects()
+		end
+
+		function classComponent:didUpdate()
+			self:runEffects()
+		end
+
+		function classComponent:willUnmount()
+			for index = 1, self.hookCounter do
+				local unmountEffect = self.unmountEffects[index]
+
+				if unmountEffect ~= nil then
+					unmountEffect()
+				end
+			end
+		end
+
+		function classComponent:render()
+			self.hookCounter = 0
+
+			return render(self.props, self.hooks)
+		end
+
+		return classComponent
+	end
+end
+
+return Hooks
+ end, newEnv("roblox-ts-model.include.node_modules.roact-hooks.src"))() end)
+
+newModule("createUseBinding", "ModuleScript", "roblox-ts-model.include.node_modules.roact-hooks.src.createUseBinding", "roblox-ts-model.include.node_modules.roact-hooks.src", function () return setfenv(function() local function createUseBinding(roact, useValue)
+	return function(defaultValue)
+		return unpack(useValue({
+			roact.createBinding(defaultValue)
+		}).value)
+	end
+end
+
+return createUseBinding
+ end, newEnv("roblox-ts-model.include.node_modules.roact-hooks.src.createUseBinding"))() end)
+
+newModule("createUseCallback", "ModuleScript", "roblox-ts-model.include.node_modules.roact-hooks.src.createUseCallback", "roblox-ts-model.include.node_modules.roact-hooks.src", function () return setfenv(function() local function createUseCallback(useMemo)
+	return function(callback, dependencies)
+		return useMemo(function()
+			return callback
+		end, dependencies)
+	end
+end
+
+return createUseCallback
+ end, newEnv("roblox-ts-model.include.node_modules.roact-hooks.src.createUseCallback"))() end)
+
+newModule("createUseContext", "ModuleScript", "roblox-ts-model.include.node_modules.roact-hooks.src.createUseContext", "roblox-ts-model.include.node_modules.roact-hooks.src", function () return setfenv(function() local function createUseContext(component, useEffect, useState)
+	-- HACK: I'd like to just use the values from the consumers directly.
+	-- However, we don't know what contexts to listen to until `useContext` is called.
+	-- Thus, we do this insanely unstable method for doing it. :)
+	local fakeConsumer = setmetatable({}, {
+		__index = component,
+	})
+
+	return function(context)
+		context.Consumer.init(fakeConsumer)
+
+		local contextEntry = fakeConsumer.contextEntry
+		local value, setValue = useState(if contextEntry == nil then nil else contextEntry.value)
+
+		useEffect(function()
+			if contextEntry == nil then
+				return
+			end
+
+			if value ~= contextEntry.value then
+				setValue(contextEntry.value)
+			end
+			
+			return contextEntry.onUpdate:subscribe(setValue)
+		end, { contextEntry })
+
+		return value
+	end
+end
+
+return createUseContext
+ end, newEnv("roblox-ts-model.include.node_modules.roact-hooks.src.createUseContext"))() end)
+
+newModule("createUseEffect", "ModuleScript", "roblox-ts-model.include.node_modules.roact-hooks.src.createUseEffect", "roblox-ts-model.include.node_modules.roact-hooks.src", function () return setfenv(function() local function createUseEffect(component)
+	return function(callback, dependsOn)
+		assert(typeof(callback) == "function", "useEffect callback is not a function")
+
+		component.hookCounter += 1
+		local hookCount = component.hookCounter
+
+		-- TODO: This mutates the component in the middle of render. That's bad, right?
+		-- It's idempotent, so it shouldn't matter.
+		-- Is there a way to do this that keeps `render` truly pure?
+		component.effects[hookCount] = { callback, dependsOn }
+	end
+end
+
+return createUseEffect
+ end, newEnv("roblox-ts-model.include.node_modules.roact-hooks.src.createUseEffect"))() end)
+
+newModule("createUseMemo", "ModuleScript", "roblox-ts-model.include.node_modules.roact-hooks.src.createUseMemo", "roblox-ts-model.include.node_modules.roact-hooks.src", function () return setfenv(function() local dependenciesDifferent = require(script.Parent.dependenciesDifferent)
+
+local function createUseMemo(useValue)
+	return function(createValue, dependencies)
+		local currentValue = useValue(nil)
+
+		local needToRecalculate = dependencies == nil
+
+		if currentValue.value == nil or dependenciesDifferent(dependencies, currentValue.value.dependencies) then
+			needToRecalculate = true
+		end
+
+		if needToRecalculate then
+			currentValue.value = {
+				dependencies = dependencies,
+				memoizedValue = { createValue() },
+			}
+		end
+
+		return unpack(currentValue.value.memoizedValue)
+	end
+end
+
+return createUseMemo
+ end, newEnv("roblox-ts-model.include.node_modules.roact-hooks.src.createUseMemo"))() end)
+
+newModule("createUseReducer", "ModuleScript", "roblox-ts-model.include.node_modules.roact-hooks.src.createUseReducer", "roblox-ts-model.include.node_modules.roact-hooks.src", function () return setfenv(function() local function createUseReducer(useCallback, useState)
+	return function(reducer, initialState)
+		local state, setState = useState(initialState)
+		local dispatch = useCallback(function(action)
+			setState(reducer(state, action))
+		end, { state })
+
+		return state, dispatch
+	end
+end
+
+return createUseReducer
+ end, newEnv("roblox-ts-model.include.node_modules.roact-hooks.src.createUseReducer"))() end)
+
+newModule("createUseState", "ModuleScript", "roblox-ts-model.include.node_modules.roact-hooks.src.createUseState", "roblox-ts-model.include.node_modules.roact-hooks.src", function () return setfenv(function() local NONE = {}
+
+local function extractValue(valueOrCallback, currentValue)
+	if type(valueOrCallback) == "function" then
+		return valueOrCallback(currentValue)
+	else
+		return valueOrCallback
+	end
+end
+
+local function createUseState(component)
+	local setValues = {}
+
+	return function(defaultValue)
+		component.hookCounter += 1
+		local hookCount = component.hookCounter
+		local value = component.state[hookCount]
+
+		if value == nil then
+			local storedDefaultValue = component.defaultStateValues[hookCount]
+			if storedDefaultValue == NONE then
+				value = nil
+			elseif storedDefaultValue ~= nil then
+				value = storedDefaultValue
+			elseif type(defaultValue) == "function" then
+				value = defaultValue()
+
+				if value == nil then
+					component.defaultStateValues[hookCount] = NONE
+				else
+					component.defaultStateValues[hookCount] = value
+				end
+			else
+				value = defaultValue
+				component.defaultStateValues[hookCount] = value
+			end
+		elseif value == NONE then
+			value = nil
+		end
+
+		local setValue = setValues[hookCount]
+		if setValue == nil then
+			setValue = function(newValue)
+				local currentValue = component.state[hookCount]
+
+				if currentValue == nil then
+					currentValue = component.defaultStateValues[hookCount]
+				end
+
+				if currentValue == NONE then
+					currentValue = nil
+				end
+
+				newValue = extractValue(newValue, currentValue)
+
+				if newValue == nil then
+					newValue = NONE
+				end
+
+				component:setState({
+					[hookCount] = newValue,
+				})
+			end
+
+			setValues[hookCount] = setValue
+		end
+
+		return value, setValue
+	end
+end
+
+return createUseState
+ end, newEnv("roblox-ts-model.include.node_modules.roact-hooks.src.createUseState"))() end)
+
+newModule("createUseValue", "ModuleScript", "roblox-ts-model.include.node_modules.roact-hooks.src.createUseValue", "roblox-ts-model.include.node_modules.roact-hooks.src", function () return setfenv(function() local function createUseValue(component)
+	return function(defaultValue)
+		component.hookCounter += 1
+		local hookCount = component.hookCounter
+
+		if component.values == nil then
+			component.values = {}
+		end
+
+		if component.values[hookCount] == nil then
+			component.values[hookCount] = { value = defaultValue }
+		end
+
+		return component.values[hookCount]
+	end
+end
+
+return createUseValue
+ end, newEnv("roblox-ts-model.include.node_modules.roact-hooks.src.createUseValue"))() end)
+
+newModule("dependenciesDifferent", "ModuleScript", "roblox-ts-model.include.node_modules.roact-hooks.src.dependenciesDifferent", "roblox-ts-model.include.node_modules.roact-hooks.src", function () return setfenv(function() local function dependenciesDifferent(dependencies, lastDependencies)
+	local length = 0
+
+	for index, dependency in pairs(dependencies) do
+		length += 1
+
+		if dependency ~= lastDependencies[index] then
+			return true
+		end
+	end
+
+	for _ in pairs(lastDependencies) do
+		length -= 1
+	end
+
+	if length ~= 0 then
+		return true
+	end
+
+	return false
+end
+
+return dependenciesDifferent
+ end, newEnv("roblox-ts-model.include.node_modules.roact-hooks.src.dependenciesDifferent"))() end)
 
 newInstance("types", "Folder", "roblox-ts-model.include.node_modules.types", "roblox-ts-model.include.node_modules")
 

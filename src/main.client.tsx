@@ -12,7 +12,7 @@ if (!PlayerGui)
 
 // Create an example UI
 const tree = <screengui IgnoreGuiInset={true}>
-  <textlabel Key='Label' Text='It works!' Size={new UDim2(1, 0, 1, 0)}/>
+  <textbutton Key='Label' Text='It works!' Size={new UDim2(1, 0, 1, 0)} Event={{ 'MouseButton1Click': ()=>print('gay') }}/>
 </screengui>;
 
 // Mount it
